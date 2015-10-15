@@ -2,7 +2,7 @@
 import logging
 import os.path
 
-# Super DB Modules
+# ETL Modules
 from modules.base.etl_base           import EtlBase
 from modules.oracle.mysql             import MySQL
 from modules.teradata.db              import TeradataDB

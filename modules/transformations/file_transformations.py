@@ -3,7 +3,7 @@ import logging
 import os
 import shutil
 
-# Super DB Modules
+# ETL Modules
 from modules.base.etl_base import EtlBase
 from modules.base.constants import *
 

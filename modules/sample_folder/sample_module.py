@@ -1,7 +1,7 @@
 # Standard Python Modules
 import logging
 
-# Super DB Modules
+# ETL Modules
 from modules.base.etl_base import EtlBase
 from modules.base.constants import *
 

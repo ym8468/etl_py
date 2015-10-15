@@ -2,7 +2,7 @@
 import logging
 import os
 
-# Super DB Modules
+# ETL Modules
 from modules.base.constants import *
 from modules.base.etl_base import EtlBase
 from modules.transformations.file_transformations import FileTransformations
