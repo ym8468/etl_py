@@ -1,0 +1,115 @@
+USING CHARACTER SET %(character_set)s
+DEFINE JOB %(jobname)s
+DESCRIPTION 'Load a Teradata table from a file'
+(
+    DEFINE SCHEMA Trans_n_Accts_Schema
+    (
+        %(define_scheme_part)s
+    );
+
+    DEFINE OPERATOR DDL_OPERATOR
+    TYPE DDL
+    ATTRIBUTES
+    (
+        VARCHAR PrivateLogName,
+        VARCHAR TdpId                = '%(tdpid)s',
+        VARCHAR UserName             = '%(username)s',
+        VARCHAR UserPassword         = '%(password)s',
+        VARCHAR AccountID,
+        VARCHAR DataEncryption,
+        VARCHAR LogonMech,
+        VARCHAR LogonMechData,
+        VARCHAR QueryBandSessInfo,
+        VARCHAR ARRAY ErrorList      =  ['3706','3803','3807']
+    );
+
+    DEFINE OPERATOR LOAD_OPERATOR
+    TYPE LOAD
+    SCHEMA *
+    ATTRIBUTES
+    (
+        VARCHAR PrivateLogName    = 'tptload_log',
+        VARCHAR TdpId             = '%(tdpid)s',
+        VARCHAR UserName          = '%(username)s',
+        VARCHAR UserPassword      = '%(password)s',
+        VARCHAR TargetTable       = '%(env_dbname)s.%(table)s_tmp',
+        VARCHAR ErrorTable1       = '%(env_dbname)s.%(table)s_tmp_et',
+        VARCHAR ErrorTable2       = '%(env_dbname)s.%(table)s_tmp_uv',
+        VARCHAR LogTable          = '%(env_dbname)s.%(table)s_tmp_log',
+        VARCHAR QueryBandSessInfo = 'UTILITYNAME=TPTLOAD;UtilityDataSize=SMALL;DATABASE=%(env_dbname)s;TABLE=%(table)s;'
+    );
+
+    DEFINE OPERATOR FILE_READER
+    TYPE DATACONNECTOR PRODUCER
+    SCHEMA Trans_n_Accts_Schema
+    ATTRIBUTES
+    (
+        VARCHAR PrivateLogName,
+        VARCHAR DirectoryPath        = '%(source_directory)s',
+        VARCHAR FileName             = '%(filename)s',
+        VARCHAR Format               = 'DELIMITED',
+        VARCHAR OpenMode             = 'Read',
+        VARCHAR TextDelimiter        = '%(delimiter)s'
+    );
+
+    STEP setup_tables
+    (
+        APPLY
+            ('DROP TABLE %(env_dbname)s.%(table)s_tmp;'),
+            ('CREATE TABLE %(env_dbname)s.%(table)s_tmp AS %(env_dbname)s.%(tmp_table)s WITH NO DATA;'),
+            ('DROP TABLE %(env_dbname)s.%(table)s_tmp_et;'),
+            ('DROP TABLE %(env_dbname)s.%(table)s_tmp_uv;'),
+            ('DROP TABLE %(env_dbname)s.%(table)s_tmp_log;')
+        TO OPERATOR (DDL_OPERATOR);
+    );
+
+    STEP load_to_tmp_table
+    (
+        APPLY
+        ('
+            INSERT INTO %(env_dbname)s.%(table)s_tmp
+            (
+                %(insert_into_part)s
+            )
+            VALUES
+            (
+                %(values_part)s
+            );
+        ')
+        TO OPERATOR (LOAD_OPERATOR[1])
+        SELECT * FROM OPERATOR (FILE_READER());
+    );
+
+    STEP rename_to_target_table
+    (
+        APPLY
+        ('
+            RENAME TABLE %(env_dbname)s.%(table)s TO %(env_dbname)s.%(table)s_bak_%(current_datetime)s;
+        '),
+        ('
+            RENAME TABLE %(env_dbname)s.%(table)s_tmp TO %(env_dbname)s.%(table)s;
+        ')
+        TO OPERATOR (DDL_OPERATOR);
+    );
+
+    STEP rename_error_tables
+    (
+        APPLY
+        ('
+            CREATE TABLE %(env_dbname)s.%(table)s_tmp_et_%(current_datetime)s AS %(env_dbname)s.%(table)s_tmp_et WITH DATA;
+        '),
+        ('
+            CREATE TABLE %(env_dbname)s.%(table)s_tmp_uv_%(current_datetime)s AS %(env_dbname)s.%(table)s_tmp_uv WITH DATA;
+        ')
+        TO OPERATOR (DDL_OPERATOR);
+    );
+
+    STEP delete_bak_table
+    (
+        APPLY
+        ('
+            DROP TABLE %(env_dbname)s.%(table)s_bak_%(current_datetime)s;
+        ')
+        TO OPERATOR (DDL_OPERATOR);
+    );
+);

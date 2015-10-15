@@ -1,0 +1,11 @@
+.logon %(tdpid)s/%(username)s,%(password)s;
+.SET ERRORLEVEL 3807 SEVERITY 0;
+
+DATABASE %(env_dbname)s;
+
+RENAME TABLE %(table)s TO %(table)s_%(current_date)s;
+
+%(table_def)s
+.if errorcode != 0 then .quit 1;
+
+.quit 0;

@@ -1,0 +1,34 @@
+dateform ANSIDATE;
+
+.set session charset '%(character_set)s'
+
+.logon %(tdpid)s/%(username)s,%(password)s;
+
+SET QUERY_BAND = 'UTILITYNAME=FASTLOAD;UtilityDataSize=SMALL;DATABASE=%(env_dbname)s;TABLE=%(table)s;' FOR SESSION;
+
+DATABASE %(env_dbname)s;
+
+DROP TABLE %(table)s_tmp_et;
+DROP TABLE %(table)s_tmp_uv;
+DROP TABLE %(table)s_tmp;
+CREATE TABLE %(table)s_tmp AS %(tmp_table)s WITH NO DATA;
+
+set record vartext '%(delimiter)s';
+
+begin loading %(table)s_tmp errorfiles %(table)s_tmp_et, %(table)s_tmp_uv;
+
+define
+        %(define_scheme_part)s
+file='%(source_directory)s/%(filename)s';
+
+INSERT INTO %(table)s_tmp(
+        %(insert_into_part)s
+)
+VALUES
+(
+        %(values_part)s
+);
+
+.end loading;
+.logoff
+.quit;

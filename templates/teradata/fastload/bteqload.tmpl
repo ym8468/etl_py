@@ -1,0 +1,30 @@
+/************************************************************
+ *
+ *  Script Name   : bteqload_YYYYMMDDhhmiss_uuid4.btq
+ *  Function      : insert data into %(tmp_table)s
+ *                  from Flatfile
+ *  Author        : etl.py
+ *
+ ************************************************************/
+.logon %(logon_user)s;
+.SET SESSION charset '%(charset)s'
+
+.SET width 200
+
+DATABASE %(actual_database)s;
+
+/***********************************/
+/* delete all record in table */
+/***********************************/
+%(preparationStatements)s
+
+/***********************************/
+/* insert latest record            */
+/***********************************/
+%(importStatement)s
+
+%(insertStatement)s
+
+.if errorcode != 0 then .quit 1;
+
+.quit 0;

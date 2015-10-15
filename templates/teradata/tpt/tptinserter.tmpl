@@ -1,0 +1,98 @@
+USING CHARACTER SET %(character_set)s
+DEFINE JOB %(jobname)s
+DESCRIPTION 'Load a Teradata table from a file'
+(
+    DEFINE SCHEMA Trans_n_Accts_Schema
+    (
+        %(define_scheme_part)s
+    );
+
+    DEFINE OPERATOR DDL_OPERATOR
+    TYPE DDL
+    ATTRIBUTES
+    (
+        VARCHAR PrivateLogName,
+        VARCHAR TdpId                = '%(tdpid)s',
+        VARCHAR UserName             = '%(username)s',
+        VARCHAR UserPassword         = '%(password)s',
+        VARCHAR AccountID,
+        VARCHAR DataEncryption,
+        VARCHAR LogonMech,
+        VARCHAR LogonMechData,
+        VARCHAR QueryBandSessInfo,
+        VARCHAR ARRAY ErrorList      =  ['3706','3803','3807']
+    );
+
+    DEFINE OPERATOR SQL_INSERTER
+    TYPE INSERTER
+    SCHEMA *
+    ATTRIBUTES
+    (
+        VARCHAR PrivateLogName       = 'tptinserter_log',
+        VARCHAR TdpId                = '%(tdpid)s',
+        VARCHAR UserName             = '%(username)s',
+        VARCHAR UserPassword         = '%(password)s'
+    );
+
+    DEFINE OPERATOR FILE_READER
+    TYPE DATACONNECTOR PRODUCER
+    SCHEMA Trans_n_Accts_Schema
+    ATTRIBUTES
+    (
+        VARCHAR PrivateLogName,
+        VARCHAR DirectoryPath        = '%(source_directory)s',
+        VARCHAR FileName             = '%(filename)s',
+        VARCHAR Format               = 'Delimited',
+        VARCHAR OpenMode             = 'Read',
+        VARCHAR TextDelimiter        = '%(delimiter)s'
+    );
+
+    STEP setup_tables
+    (
+        APPLY
+            ('DROP TABLE %(env_dbname)s.%(table)s_tmp;'),
+            ('CREATE TABLE %(env_dbname)s.%(table)s_tmp AS %(env_dbname)s.%(tmp_table)s WITH NO DATA;')
+        TO OPERATOR (DDL_OPERATOR);
+    );
+
+    STEP load_to_tmp_table
+    (
+        APPLY
+        ('
+            INSERT INTO %(env_dbname)s.%(table)s_tmp
+            (
+                %(insert_into_part)s
+            )
+            VALUES
+            (
+                %(values_part)s
+            );
+        ')
+        TO OPERATOR (SQL_INSERTER[1])
+        SELECT *
+        FROM OPERATOR (FILE_READER());
+    );
+
+    STEP insert_from_tmp_table
+    (
+        APPLY
+        ('
+            DELETE FROM %(env_dbname)s.%(table)s
+            %(where_clause)s;
+        '),
+        ('
+            INSERT INTO  %(env_dbname)s.%(table)s
+            SELECT * FROM %(env_dbname)s.%(table)s_tmp;
+        ')
+        TO OPERATOR (DDL_OPERATOR);
+    );
+
+    STEP delete_tmp_table
+    (
+        APPLY
+        ('
+            DROP TABLE %(env_dbname)s.%(table)s_tmp;
+        ')
+        TO OPERATOR (DDL_OPERATOR);
+    );
+);

@@ -1,0 +1,20 @@
+
+dateform ANSIDATE;
+
+.logon %(logon_user)s;
+
+database %(actual_database)s;
+
+%(preparationStatements)s
+
+%(setRecordStatement)s;
+
+begin loading %(loadTable)s errorfiles %(loadErrorTable)s, %(loadUniqueViolationsTable)s;
+
+%(defineStatement)s
+
+%(insertStatement)s
+
+.end loading;
+.logoff
+.quit;

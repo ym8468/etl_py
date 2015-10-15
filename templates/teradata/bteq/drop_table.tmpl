@@ -1,0 +1,9 @@
+.logon %(tdpid)s/%(username)s,%(password)s;
+
+DATABASE %(env_dbname)s;
+
+DROP TABLE %(table)s;
+
+.if errorcode != 0 then .quit 1;
+
+.quit 0;

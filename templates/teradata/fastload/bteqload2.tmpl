@@ -1,0 +1,19 @@
+.logon %(tdpid)s/%(username)s,%(password)s;
+
+DATABASE %(env_dbname)s;
+
+DELETE FROM %(table)s
+%(where_clause)s;
+.if errorcode != 0 then .quit 1;
+
+INSERT INTO %(table)s
+SELECT * FROM %(table)s_tmp;
+.if errorcode != 0 then .quit 1;
+
+DROP TABLE %(table)s_tmp;
+.if errorcode != 0 then .quit 1;
+
+CREATE TABLE %(table)s_tmp_et_%(current_datetime)s AS %(table)s_tmp_et WITH DATA;
+CREATE TABLE %(table)s_tmp_uv_%(current_datetime)s AS %(table)s_tmp_uv WITH DATA;
+
+.quit 0;

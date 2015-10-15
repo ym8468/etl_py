@@ -1,0 +1,18 @@
+.logtable %(database)s.LT_%(table)s;
+
+.logon %(logonUser)s;
+
+.begin export;
+.export outfile %(outFile)s
+        mode record
+        format text
+;
+
+%(selectStatement)s
+;
+
+.end export;
+
+.logoff;
+
+.quit 0;
